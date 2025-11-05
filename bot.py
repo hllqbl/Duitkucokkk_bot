@@ -1,49 +1,53 @@
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
 import os
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-saldo = 0
-transaksi = []
+# Ganti dengan token bot Anda
+TOKEN = os.getenv('TELEGRAM_TOKEN', 'YOUR_BOT_TOKEN_HERE')
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('💵 **BOT KEUANGAN PRIBADI**\n\n/masuk [jumlah] - Catat pemasukan\n/keluar [jumlah] - Catat pengeluaran\n/saldo - Cek saldo')
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text('Halo! Bot sedang berjalan dengan baik.')
 
-async def masuk(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global saldo
-    if context.args:
-        jumlah = int(context.args[0])
-        kategori = context.args[1] if len(context.args) > 1 else "lainnya"
-        
-        saldo += jumlah
-        transaksi.append(f"➕ Rp {jumlah} ({kategori})")
-        
-        await update.message.reply_text(f'✅ **Pemasukan Tercatat!**\n💰 Rp {jumlah:,}\n📁 {kategori}\n\n💳 Saldo: Rp {saldo:,}')
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    help_text = """
+    Bot Commands:
+    /start - Memulai bot
+    /help - Menampilkan bantuan
+    """
+    await update.message.reply_text(help_text)
 
-async def keluar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    global saldo
-    if context.args:
-        jumlah = int(context.args[0])
-        kategori = context.args[1] if len(context.args) > 1 else "lainnya"
-        
-        saldo -= jumlah
-        transaksi.append(f"➖ Rp {jumlah} ({kategori})")
-        
-        await update.message.reply_text(f'✅ **Pengeluaran Tercatat!**\n💰 Rp {jumlah:,}\n📁 {kategori}\n\n💳 Saldo: Rp {saldo:,}')
+async def echo_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+    await update.message.reply_text(f'Anda mengatakan: {text}')
 
-async def cek_saldo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f'💳 **Saldo Saat Ini:** Rp {saldo:,}')
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print(f"Error: {context.error}")
 
 def main():
-    TOKEN = os.getenv('TELEGRAM_TOKEN')
-    app = Application.builder().token(TOKEN).build()
-    
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("masuk", masuk))
-    app.add_handler(CommandHandler("keluar", keluar))
-    app.add_handler(CommandHandler("saldo", cek_saldo))
-    
-    print("Bot sedang berjalan...")
-    app.run_polling()
+    try:
+        print("Memulai bot...")
+        
+        # Build application
+        app = Application.builder().token(TOKEN).build()
+        
+        # Add handlers
+        app.add_handler(CommandHandler("start", start_command))
+        app.add_handler(CommandHandler("help", help_command))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo_message))
+        
+        # Error handler
+        app.add_error_handler(error_handler)
+        
+        print("Bot berhasil diinisialisasi. Menjalankan polling...")
+        
+        # Start polling
+        app.run_polling(
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True
+        )
+        
+    except Exception as e:
+        print(f"Error saat menjalankan bot: {e}")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
